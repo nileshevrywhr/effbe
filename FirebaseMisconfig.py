@@ -3,7 +3,6 @@
 import os
 import sys
 import ntpath
-import time
 import re
 import urllib3
 import hashlib
@@ -15,7 +14,7 @@ rootDir = os.path.expanduser("~") + "/.SourceCodeAnalyzer/" #ConfigFolder ~/.Sou
 projectDir = ""
 apkFilePath = ""
 apkFileName = ""
-firebaseProjectList = ["covid19challenge-1586080076608", "achabab-e7de7", "trueid-84d04-292d7"]
+firebaseProjectList = ["141520", "appradio-pro-2-0", "achabab-e7de7", "trueid-84d04-292d7"]
 inScopeUrls = []
 apkHash = ""
 apktoolPath = "./Dependencies/apktool_2.3.4.jar"
@@ -60,13 +59,13 @@ def reverseEngineerApplication(apkFileName):
 	ic("successfully decompiled the application. proceeding with enumeraing firebase project names from the application code.")
 
 def findFirebaseProjectNames():
-	
+
 	global firebaseProjectList
 	regex = b"https*://(.+?)\.firebaseio.com"
 	
 	for dir_path, dirs, file_names in os.walk(rootDir + apkFileName + "_" + hashlib.md5().hexdigest()):
 		for file_name in file_names:
-			fullpath = os.path.join(dir_path, file_name)
+			fullpath = os.path.join(dir_path, file_name)			
 			with open(fullpath, "rb") as f: 	
 				contents = f.read()
 				
@@ -81,9 +80,10 @@ def findFirebaseProjectNames():
 
 				if (len(temp) != 0):
 					print(f"{file_name}: {len(temp)} Firebase Instance(s) Found")
+					ic(fullpath)
 					with open("Projects.txt", "ab") as file:
 						for proj in temp:
-							# writes to Projects.txt
+							# writes to Projects.txt							
 							file.write(proj + b'\n')
 
 							# adds to internal list for further scanning
@@ -97,36 +97,29 @@ def findFirebaseProjectNames():
 
 def printFirebaseProjectNames():
 	print("Found " + str(len(firebaseProjectList)) + " Project References in the application. Printing the list of Firebase Projects found.")
-	ic(firebaseProjectList)
-	for projectName in firebaseProjectList:
-		print(projectName)
+	print(firebaseProjectList)
 	
 def scanInstances():
 	ic.enable()
 	ic("Scanning Firebase Instance(s)")
-	for proj in firebaseProjectList:		
+	for proj in firebaseProjectList:
 		url = 'https://' + proj + '.firebaseio.com/.json'
 		try:
 			# NOT using python requests bcoz it has certain disadvantages w.r.t certificate management for HTTPS URLs 
 			http = urllib3.PoolManager()
 			response = http.request('GET', url)
-			ic(response.status, response.reason, url)
-		except urllib3.exceptions.HTTPError as err:
-			if(err.code == 401):
-				print("Secure Firebase Instance Found: " + proj)
-				continue
-			if(err.code == 404):
-				print("Project does not exist: " + proj)
-				continue     
-			else:
-				print("Unable to identify misconfiguration for: " + proj)
-				continue
-		except urllib3.exceptions.URLError as err:
-			print("Facing connectivity issues. Please Check the Network Connectivity and Try Again.")
-			continue
 
-		print("Misconfigured Firebase Instance Found: " + str(proj))
-		
+			if (response.status == 200):
+				print(f"Misconfigured Firebase Instance Found: {proj} - {url}")
+			else:
+				print(f"{proj}: {response.status} {response.reason}")
+				
+		except urllib3.exceptions.DecodeError as err:
+			print(f"Some decoding error that gives blank lines: {err}")
+			continue
+		except urllib3.exceptions.SSLError as err:
+			print(f"SSL is doing its thing: {err}")
+			continue
 
 
 if (len(sys.argv) < 3):

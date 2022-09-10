@@ -14,10 +14,10 @@ rootDir = os.path.expanduser("~") + "/.SourceCodeAnalyzer/" #ConfigFolder ~/.Sou
 projectDir = ""
 apkFilePath = ""
 apkFileName = ""
-firebaseProjectList = ["141520", "appradio-pro-2-0", "achabab-e7de7", "trueid-84d04-292d7"]
+firebaseProjectList = []
 inScopeUrls = []
 apkHash = ""
-apktoolPath = "./Dependencies/apktool_2.3.4.jar"
+apktoolPath = "./Dependencies/apktool_2_6_1.jar"
 
 def isNewInstallation():
 

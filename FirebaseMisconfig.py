@@ -1,29 +1,29 @@
 #!/usr/bin/python3
+
 import os
 import sys
 import ntpath
 import time
 import re
-from urllib.parse import urlparse
-from certifi import contents 
 import urllib3
 import hashlib
 from icecream import ic
 ic.configureOutput("DEBUG ‣ ")
+ic.disable()
 
 rootDir = os.path.expanduser("~") + "/.SourceCodeAnalyzer/" #ConfigFolder ~/.SourceCodeAnalyzer/
 projectDir = ""
 apkFilePath = ""
 apkFileName = ""
-firebaseProjectList = []
-inScoprUrls = []
+firebaseProjectList = ["covid19challenge-1586080076608", "achabab-e7de7", "trueid-84d04-292d7"]
+inScopeUrls = []
 apkHash = ""
 apktoolPath = "./Dependencies/apktool_2.3.4.jar"
 
 def isNewInstallation():
 
 	if (os.path.exists(rootDir) == False):
-		print("new installation detected")
+		ic("new installation detected")
 		os.mkdir(rootDir)
 		return True
 	else:
@@ -32,7 +32,7 @@ def isNewInstallation():
 def isValidPath(apkFilePath):
 
 	global apkFileName
-	print("Checking if the APK file path is valid.")
+	ic("checking if the APK file path is valid")
 	
 	if (os.path.exists(apkFilePath) == False):
 		print("Incorrect APK file path found. Please try again with correct file name.")
@@ -44,7 +44,7 @@ def isValidPath(apkFilePath):
 def reverseEngineerApplication(apkFileName):
 	
 	global projectDir
-	print("Initiating APK Decompilation Process.")
+	ic("initiating APK Decompilation Process.")
 	projectDir = rootDir + apkFileName + "_" + hashlib.md5().hexdigest()
 	
 	if (os.path.exists(projectDir) == True):
@@ -57,50 +57,61 @@ def reverseEngineerApplication(apkFileName):
 	if (result!=0):
 		print("Apktool failed with exit status "+str(result)+". Please Try Again.")
 		exit(1)
-	print("Successfully decompiled the application. Proceeding with enumeraing firebase peoject names from the application code.")
+	ic("successfully decompiled the application. proceeding with enumeraing firebase project names from the application code.")
 
 def findFirebaseProjectNames():
 	
 	global firebaseProjectList
-	regex = 'https*://(.+?)\.firebaseio.com'
+	regex = b"https*://(.+?)\.firebaseio.com"
 	
 	for dir_path, dirs, file_names in os.walk(rootDir + apkFileName + "_" + hashlib.md5().hexdigest()):
 		for file_name in file_names:
 			fullpath = os.path.join(dir_path, file_name)
-			with open(fullpath, 'rb') as f:
+			with open(fullpath, "rb") as f: 	
 				contents = f.read()
-				temp = re.findall(regex, str(contents))
+				
+				temp = re.findall(regex, contents)
+
+				# matches = re.finditer(regex, contents, re.MULTILINE)
+				# for matchNum, match in enumerate(matches, start=1):
+				# 	print ("Match {matchNum} was found at {start}-{end}: {match}".format(matchNum = matchNum, start = match.start(), end = match.end(), match = match.group()))
+				# 	for groupNum in range(0, len(match.groups())):
+				# 		groupNum = groupNum + 1
+				# 		print ("Group {groupNum} found at {start}-{end}: {group}".format(groupNum = groupNum, start = match.start(groupNum), end = match.end(groupNum), group = match.group(groupNum)))
+
 				if (len(temp) != 0):
+					print(f"{file_name}: {len(temp)} Firebase Instance(s) Found")
+					with open("Projects.txt", "ab") as file:
+						for proj in temp:
+							# writes to Projects.txt
+							file.write(proj + b'\n')
 
-					file = open("FBProjList.txt", "w")
-					file.write(str(temp))
-					file.close()
-
-					firebaseProjectList += temp
-					print("Firebase Instance(s) Found")
+							# adds to internal list for further scanning
+							ins = "".join([chr(x) for x in proj])
+							firebaseProjectList.append(ins)
 		
+
 	if (len(firebaseProjectList) == 0):
 		print("No Firebase Project Found. Taking an exit!\nHave an nice day.")
 		exit(0)
 
 def printFirebaseProjectNames():
 	print("Found " + str(len(firebaseProjectList)) + " Project References in the application. Printing the list of Firebase Projects found.")
+	ic(firebaseProjectList)
 	for projectName in firebaseProjectList:
-		ic(sys.getsizeof(projectName))
-	# extracting firebase project name here
-	ic(sys.getsizeof(firebaseProjectList))
+		print(projectName)
 	
-
 def scanInstances():
-	print("Scanning Firebase Instance(s)")
+	ic.enable()
+	ic("Scanning Firebase Instance(s)")
 	for proj in firebaseProjectList:		
 		url = 'https://' + proj + '.firebaseio.com/.json'
 		try:
 			# NOT using python requests bcoz it has certain disadvantages w.r.t certificate management for HTTPS URLs 
 			http = urllib3.PoolManager()
 			response = http.request('GET', url)
-			# ic(response.status)
-		except urllib3.HTTPError as err:
+			ic(response.status, response.reason, url)
+		except urllib3.exceptions.HTTPError as err:
 			if(err.code == 401):
 				print("Secure Firebase Instance Found: " + proj)
 				continue
@@ -108,17 +119,14 @@ def scanInstances():
 				print("Project does not exist: " + proj)
 				continue     
 			else:
-				print("Unable to identify misconfiguration for: ")
+				print("Unable to identify misconfiguration for: " + proj)
 				continue
-		except urllib3.URLError as err:
+		except urllib3.exceptions.URLError as err:
 			print("Facing connectivity issues. Please Check the Network Connectivity and Try Again.")
 			continue
 
-		# print("Misconfigured Firebase Instance Found: " + str(proj))
-		ic(sys.getsizeof(proj))
-		file = open("ProjectStr.txt", "w")
-		file.write(str(proj))
-		file.close()
+		print("Misconfigured Firebase Instance Found: " + str(proj))
+		
 
 
 if (len(sys.argv) < 3):

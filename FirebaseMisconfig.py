@@ -109,7 +109,7 @@ def scanInstances():
 			response = http.request('GET', url)
 
 			if (response.status == 200):
-				print(f"Misconfigured Firebase Instance Found: {proj} - {url}")
+				print(f"Misconfigured Firebase Instance Found: {proj} {url}")
 				with open("MisconfiguredProjects.txt","a") as f:
 					f.write(f"{proj} - {url}\n")
 			else:
@@ -151,6 +151,5 @@ if (sys.argv[1] == "-l" or sys.argv[1] == "--list"):
 		projects = f.readlines()
 		for project in projects:
 			firebaseProjectList.append(project[:-1])
-	# print(firebaseProjectList)
 	isNewInstallation()
 	scanInstances()

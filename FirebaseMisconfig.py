@@ -8,7 +8,6 @@ import urllib3
 import hashlib
 from icecream import ic
 ic.configureOutput("DEBUG ‣ ")
-ic.disable()
 
 rootDir = os.path.expanduser("~") + "/.SourceCodeAnalyzer/" #ConfigFolder ~/.SourceCodeAnalyzer/
 projectDir = ""
@@ -111,16 +110,17 @@ def scanInstances():
 
 			if (response.status == 200):
 				print(f"Misconfigured Firebase Instance Found: {proj} - {url}")
+				with open("MisconfiguredProjects.txt","a") as f:
+					f.write(f"{proj} - {url}\n")
 			else:
 				print(f"{proj}: {response.status} {response.reason}")
 				
-		except urllib3.exceptions.DecodeError as err:
-			print(f"Some decoding error that gives blank lines: {err}")
+		except urllib3.exceptions.LocationParseError as err:
+			print(f"label empty or too long, not sure how we got this: {err}")
 			continue
 		except urllib3.exceptions.SSLError as err:
 			print(f"SSL is doing its thing: {err}")
 			continue
-
 
 if (len(sys.argv) < 3):
 	print("Please provide the required arguments to initiate scanning.")
@@ -144,3 +144,13 @@ if (sys.argv[1] == "-f" or sys.argv[1] == "--firebase"):
 	isNewInstallation()
 	scanInstances()
 
+if (sys.argv[1] == "-l" or sys.argv[1] == "--list"):
+	filename = sys.argv[2]
+
+	with open(filename, "r") as f:
+		projects = f.readlines()
+		for project in projects:
+			firebaseProjectList.append(project[:-1])
+	# print(firebaseProjectList)
+	isNewInstallation()
+	scanInstances()
